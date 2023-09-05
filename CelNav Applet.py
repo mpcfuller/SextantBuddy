@@ -5,9 +5,12 @@ import tkcalendar
 import math
 import pickle
 import os
+import datetime
 
 global HTEYE
 global IErr
+global dateTime
+dateTime = datetime.date(1900,1,1)
 root = tk.Tk()
 root.title("SextantBuddy")
 
@@ -74,22 +77,27 @@ root.config(menu=menubar)
 frm = tk.Frame(root)
 frm.grid()
 
-def example1():
+def dateCal():
+        global dateTime
+
         def print_sel():
-            print(cal.selection_get())
+            global dateTime
+            dateTime = cal.selection_get()
+            print(dateTime)
             cal.see(datetime.date(year=2016, month=2, day=5))
+            top.destroy()
 
         top = tk.Toplevel(root)
+        top.title("Choose Date")
+        top.grab_set()
 
-        import datetime
         today = datetime.date.today()
 
         mindate = today - datetime.timedelta(days=365000)
         maxdate = today + datetime.timedelta(days=365000)
 
         cal = tkcalendar.Calendar(top, font="Arial 14", selectmode='day', locale='en_US',
-                       mindate=mindate, maxdate=maxdate, disabledforeground='red',
-                       cursor="hand1")
+                       mindate=mindate, maxdate=maxdate, disabledforeground='red',)
         cal.pack(fill="both", expand=True)
         ttk.Button(top, text="OK", command=print_sel).pack()
 
@@ -99,11 +107,17 @@ def enter_keypress():
     global tempF
     global tempC
     global pres
+    global t_h
+    global t_m
+    global t_s
     sext_deg = degree.get()
     sext_min = minute.get()
     tempF = temp.get()
     tempC = (float(tempF) - 32) * (5/9)
     pres = pressure.get()
+    t_h = hour.get()
+    t_m = tmin.get()
+    t_s = tsec.get()
     print(sext_deg + "\'", sext_min + "\"")
     sight_reduction()
 
@@ -147,16 +161,36 @@ def dropdown_change(*args):
         return
 
 def sight_reduction():
-    Ho = (float(sext_deg) + (float(sext_min) / 60))
+    Hs = (float(sext_deg) + (float(sext_min) / 60))
     dip = (0.97 * math.sqrt(float(HTEYE)))*-1
-    refr = (1 / math.tan(Ho + (7.31/(Ho + 4.4)))) * ((float(pres) / 1010)*(283 / tempC))
+    refr = (1 / math.tan(Hs + (7.31/(Hs + 4.4)))) * ((float(pres) / 1010)*(283 / tempC))
 
-    Hc = Ho + (float(IErr) + dip + refr)/60
+    Hc = Hs + (float(IErr) + dip + refr)/60
 
-    print(str(Ho) + "\'")
-    print(dip)
-    print(refr)
-    print(Hc)
+    if dateTime.month < 3:
+        JD_Year = int(dateTime.year) - 1
+        JD_Month = int(dateTime.month) + 12
+    else:
+        JD_Year = int(dateTime.year)
+        JD_Month = int(dateTime.month)
+    
+    JD_Day = int(dateTime.day) + ((int(t_h) + (int(t_m) + int(t_s)/60) / 60) / 24)
+
+    JD_A1 = math.modf(JD_Year / 100)
+    JD_A = JD_A1[1]
+    JD_A_DIV = math.modf(JD_A / 4)
+
+    JD_B = 2 - JD_A + JD_A_DIV[1]
+
+    JD_Part1 = math.modf(365.25 * (JD_Year + 4716))
+    JD_Part2 = math.modf(30.6 * (JD_Month + 1))
+    JD = JD_Part1[1] + JD_Part2[1] + JD_Day + JD_B - 1524.5
+
+    print(str(Hs) + "\'")
+    print("dip:", dip)
+    print("refr:", refr)
+    print("ALT:", Hc)
+    print(JD_Day,JD)
 
 
     
@@ -226,7 +260,7 @@ temp.bind('<FocusOut>', lambda event, obj=temp : focus_out(event, obj))
 
 #time things
 
-date = ttk.Button(frm, text="Calendar", command=example1)
+date = ttk.Button(frm, text="Calendar", command=dateCal)
 date.grid(column=5,row=2)
 
 HOUR = [
