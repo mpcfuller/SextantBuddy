@@ -40,6 +40,66 @@ if os.path.exists(propFile):
 
 class MainWindow(tk.Tk):
     def __init__(self):
+        def focus_out(event, obj):
+            caller = event.widget
+            check = caller.get()
+
+            if not check:
+                caller.configure(foreground="gray")
+
+                if obj == self.degree or obj == self.lat or obj == self.lon:
+                    caller.insert(END,"Whole Degrees")
+                elif obj == self.minute:
+                    caller.insert(END,"Decimal Minutes")
+                elif obj == self.temp:
+                    caller.insert(END,"Decimal Degrees F")
+                elif obj == self.pressure:
+                    caller.insert(END,"Millibar")
+                else:
+                    return
+
+        def enter_keypress():
+            global sext_deg
+            global sext_min
+            global tempF
+            global tempC
+            global pres
+            global t_h
+            global t_m
+            global t_s
+            global Long
+            global times
+            times = self.time.get()
+            sext_deg = self.degree.get()
+            sext_min = self.minute.get()
+            tempF = self.temp.get()
+            tempC = (float(tempF) - 32) * (5/9)
+            pres = self.pressure.get()
+            #Long = self.lon.get()
+            print(sext_deg + "\'", sext_min + "\"")
+            sight_reduction()
+
+        def textbox_focus(event):
+            caller = event.widget
+            check = caller.get()
+
+            if check == "Whole Degrees" or check == "Decimal Minutes" \
+                or check == "Decimal Degrees F" or check == "Millibar":
+                caller.configure(foreground="black")
+                caller.delete(0,END)
+
+        def dropdown_change(*args):
+            thing = self.celBody.get()
+
+            if thing == "Star":
+                body = ttk.Combobox(frm, textvariable=self.starVar, values=Stars)
+                body.grid(column=3,row=3)
+            elif thing == "Planet":
+                body = ttk.Combobox(frm, textvariable=self.planVar, values=Planets)
+                body.grid(column=3,row=3)
+            else:
+                return
+
         tk.Tk.__init__(self)
 
         frm = tk.Frame(self)
@@ -88,22 +148,25 @@ class MainWindow(tk.Tk):
         tk.Label(self, text='Atm. Pressure').grid(column=4, row=0)
         tk.Label(self, text='Ambient Temp').grid(column=4, row=1)
         tk.Label(self, text='Date').grid(column=4, row=2)
-        tk.Label(self, text='Assumed Longitude').grid(column=6, row=0)
-        tk.Label(self, text='Assumed Latitude').grid(column=6, row=1)
+        tk.Label(self, text='Assumed lon').grid(column=6, row=0)
+        tk.Label(self, text='Assumed lat').grid(column=6, row=1)
 
         self.degree = ttk.Entry(self, foreground="gray")
         self.degree.grid(column=2,row=0)
         self.degree.insert(END,"Whole Degrees")
         self.degree.bind('<FocusIn>', textbox_focus)
-        self.degree.bind('<FocusOut>', lambda event, obj=self.degree : focus_out(event, obj))
+        self.degree.bind('<FocusOut>',
+                         lambda event,obj=self.degree : focus_out(event, obj))
 
         self.minute = ttk.Entry(self, foreground="gray")
         self.minute.grid(column=2,row=1)
         self.minute.insert(END,"Decimal Minutes")
         self.minute.bind('<FocusIn>', textbox_focus)
-        self.minute.bind('<FocusOut>', lambda event, obj=self.minute : focus_out(event, obj))
+        self.minute.bind('<FocusOut>',
+                         lambda event,obj=self.minute : focus_out(event, obj))
 
-        self.cb = ttk.Combobox(self, textvariable=self.celBody, values=Celestial)
+        self.cb = ttk.Combobox(self, textvariable=self.celBody,
+                               values=Celestial)
         self.cb.grid(column=2, row=2)
         self.celBody.trace("w", dropdown_change)
 
@@ -118,19 +181,22 @@ class MainWindow(tk.Tk):
         self.temp.grid(column=5,row=1)
         self.temp.insert(END,"Decimal Degrees F")
         self.temp.bind('<FocusIn>', textbox_focus)
-        self.temp.bind('<FocusOut>', lambda event, obj=self.temp : focus_out(event, obj))
+        self.temp.bind('<FocusOut>',
+                       lambda event,obj=self.temp : focus_out(event, obj))
 
-        self.latitude = ttk.Entry(self, foreground="gray")
-        self.latitude.grid(column=7, row=0)
-        self.latitude.insert(END,"Whole Degrees")
-        self.latitude.bind('<FocusIn>', textbox_focus)
-        self.latitude.bind('<FocusOut>', lambda event, obj=self.latitude : focus_out(event, obj))
+        self.lat = ttk.Entry(self, foreground="gray")
+        self.lat.grid(column=7, row=0)
+        self.lat.insert(END,"Whole Degrees")
+        self.lat.bind('<FocusIn>', textbox_focus)
+        self.lat.bind('<FocusOut>',
+                      lambda event,obj=self.lat : focus_out(event, obj))
 
-        self.longitude = ttk.Entry(self, foreground="gray")
-        self.longitude.grid(column=7, row=1)
-        self.longitude.insert(END,"Whole Degrees")
-        self.longitude.bind('<FocusIn>', textbox_focus)
-        self.longitude.bind('<FocusOut>', lambda event, obj=self.longitude : focus_out(event, obj))
+        self.lon = ttk.Entry(self, foreground="gray")
+        self.lon.grid(column=7, row=1)
+        self.lon.insert(END,"Whole Degrees")
+        self.lon.bind('<FocusIn>', textbox_focus)
+        self.lon.bind('<FocusOut>',
+                      lambda event,obj=self.lon : focus_out(event, obj))
 
         #time things
         self.date = ttk.Button(self, text="Calendar", command=dateCal)
@@ -255,71 +321,11 @@ def dateCal():
         mindate = today - datetime.timedelta(days=365000)
         maxdate = today + datetime.timedelta(days=365000)
 
-        cal = tkcalendar.Calendar(top, font="Arial 14", selectmode='day', locale='en_US',
-                       mindate=mindate, maxdate=maxdate, disabledforeground='red',)
+        cal = tkcalendar.Calendar(top, font="Arial 14", selectmode='day', 
+                                  locale='en_US', mindate=mindate,
+                                  maxdate=maxdate, disabledforeground='red',)
         cal.pack(fill="both", expand=True)
         ttk.Button(top, text="OK", command=print_sel).pack()
-
-def enter_keypress():
-    global sext_deg
-    global sext_min
-    global tempF
-    global tempC
-    global pres
-    global t_h
-    global t_m
-    global t_s
-    global Long
-    sext_deg = degree.get()
-    sext_min = minute.get()
-    tempF = temp.get()
-    tempC = (float(tempF) - 32) * (5/9)
-    pres = pressure.get()
-   # t_h = hour.get()
-   # t_m = tmin.get()
-   # t_s = tsec.get()
-  #  Long = longitude.get()
-    print(sext_deg + "\'", sext_min + "\"")
-    sight_reduction()
-
-def textbox_focus(event):
-    caller = event.widget
-    check = caller.get()
-
-    if check == "Whole Degrees" or check == "Decimal Minutes" \
-        or check == "Decimal Degrees F" or check == "Millibar":
-        caller.configure(foreground="black")
-        caller.delete(0,END)
-
-def focus_out(event, obj):
-    caller = event.widget
-    check = caller.get()
-
-    if not check:
-        caller.configure(foreground="gray")
-
-        if obj == degree or obj == latitude or obj == longitude:
-            caller.insert(END,"Whole Degrees")
-        elif obj == minute:
-            caller.insert(END,"Decimal Minutes")
-        elif obj == temp:
-            caller.insert(END,"Decimal Degrees F")
-        elif obj == pressure:
-            caller.insert(END,"Millibar")
-        else:
-            return
-
-def dropdown_change(*args):
-    thing = celBody.get()
-
-    if thing == "Star":
-        body = ttk.Combobox(frm, textvariable=starVar, values=Stars)
-        body.grid(column=3,row=3)
-    elif thing == "Planet":
-        body = ttk.Combobox(frm, textvariable=planVar, values=Planets)
-        body.grid(column=3,row=3)
-    else:
-        return
 
 def julian_time():
     if dateTime.month < 3:
@@ -330,7 +336,8 @@ def julian_time():
         JD_Month = int(dateTime.month)
     
     JD_Day = int(dateTime.day) + \
-        (((int(t_h) + (int(t_m) + int(t_s)/60) / 60) / 24) + tzone)
+        (((int(times['t_h']) + \
+           (int(times['t_m']) + int(times['t_s'])/60) / 60) / 24) + tzone)
 
     global JulianDay
     global JulianDate
@@ -370,6 +377,8 @@ def sidereal_time():
     sidTimeLoc = (280.46061837 + (360.98564736629*(JulianDay-2451545)) \
         + (0.000387933 * (bigTDay**2)) - ((bigTDay**3) / 38710000)) % 360
     
+    print(sidTimeLoc)
+    
 def hour_angle():
     global H
 
@@ -385,9 +394,8 @@ def sight_reduction():
 
     julian_time()
     sidereal_time()
-    #decl_Sun = math.degrees(math.asin(math.sin(math.radians(-23.44)) * \
-    # math.cos(math.radians((360/365.24)*(bigN + 10) + \
-    # (360/math.pi)*0.0167*math.sin(math.radians((360/365.24)*(bigN - 2)))))))
+    
+
 
     print(str(Hs) + "\'")
     print("dip:", dip)
@@ -396,39 +404,63 @@ def sight_reduction():
     print(JulianDay)
 
 class time_widget(tk.Frame):
-    def __init__(self, parent, label, default='00'):
+    def __init__(self, parent, label):
         tk.Frame.__init__(self, parent)
+
+        self.label = tk.Label(parent, text=label)
+        self.label.grid(column=4,row=3)
+
+        self.space = tk.Frame(parent)
+        self.space.grid(column=5,row=3)
         
         hourVar = StringVar()
         tminVar = StringVar()
         tsecVar = StringVar()
 
-        self.label = tk.Label(parent, text=label)
-        self.label.grid(column=5,row=3)
+        self.hour = ttk.Spinbox(self.space,
+                                from_=0,
+                                to=23,
+                                textvariable=hourVar)
+        self.hour.insert(END,'00')
+        self.hour.configure(width=4, wrap=True)
+        self.hour.grid(column=0,row=0)
+        
+        self.HMColonLabel = tk.Label(self.space,
+                                     text=":")
+        self.HMColonLabel.grid(column=1,row=0)
+        
+        self.tmin = ttk.Spinbox(self.space,
+                                from_=0,
+                                to=59,
+                                textvariable=tminVar)
+        self.tmin.insert(END,'00')
+        self.tmin.configure(width=4, wrap=True)
+        self.tmin.grid(column=2,row=0)
+        
+        self.MSColonLabel = tk.Label(self.space,
+                                     text=":")
+        self.MSColonLabel.grid(column=3,row=0)
+        
+        self.tsec = ttk.Spinbox(self.space,
+                                from_=0,
+                                to=59,
+                                textvariable=tsecVar)
+        self.tsec.insert(END,'00')
+        self.tsec.configure(width=4,wrap=True)        
+        self.tsec.grid(column=4,row=0)
 
-        self.hour = ttk.Spinbox(parent, from_=0, to=23, textvariable=hourVar)
-        self.hour.insert(END,default)
-        self.hour.grid(column=6,row=3)
-        self.tmin = ttk.Spinbox(parent, from_=0, to=59, textvariable=tminVar)
-        self.tmin.insert(END,default)
-        self.tmin.grid(column=7,row=3)
-        self.tsec = ttk.Spinbox(parent, from_=0, to=59, textvariable=tsecVar)
-        self.tsec.insert(END,default)
-        self.tsec.grid(column=8,row=3)
-
-    #hour.grid(column=5, row=3)
-
-    #HMcolon = tk.Label(frm, text=":").grid(column=6,row=3)
-
-    #tmin = ttk.Combobox(frm, textvariable=tminVar, values=TMIN)
-    #tmin.grid(column=7, row=3)
-    #tmin.insert(END, "00")
-
-    #MScolon = tk.Label(frm, text=":").grid(column=8,row=3)
-
-    #tsec = ttk.Combobox(frm, textvariable=tsecVar, values=TSEC)
-    #tsec.grid(column=9, row=3)
-    #tsec.insert(END, "00")
+    def get(self):
+        t_h = self.hour.get()
+        t_m = self.tmin.get()
+        t_s = self.tsec.get()
+        
+        global timeData
+        timeData = {
+            't_h' : t_h,
+            't_m' : t_m,
+            't_s' : t_s
+        }
+        return timeData
 
 if __name__ == "__main__":
     root = MainWindow()
