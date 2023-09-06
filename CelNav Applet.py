@@ -7,75 +7,234 @@ import pickle
 import os
 import datetime
 
-global HTEYE
-global IErr
+global tzone
 global dateTime
+tzone = 0
 dateTime = datetime.date(1900,1,1)
-root = tk.Tk()
-root.title("SextantBuddy")
-
-menubar = Menu(root)
 
 mydir = os.getcwd()
 propFile = os.path.join(mydir,'properties.pkl')
 
+global pd
+global HTEYE
+global IErr
+global TZ
+global propDict
 propDict = {
     "IndexError" : 0,
-    "HeightOfEye" : 0
+    "HeightOfEye" : 0,
+    "TimeZone" : "GMT 0"
 }
 pd = propDict
 IErr = pd["IndexError"]
 HTEYE = pd["HeightOfEye"]
-    
+TZ = pd["TimeZone"]
+
 if os.path.exists(propFile):
-    if os.path.getsize(propFile) > 0:
-        read_in = open('properties.pkl','rb')
-        pd = pickle.load(read_in)
-        IErr = pd["IndexError"]
-        HTEYE = pd["HeightOfEye"]
+        if os.path.getsize(propFile) > 0:
+            read_in = open('properties.pkl','rb')
+            pd = pickle.load(read_in)
+            IErr = pd["IndexError"]
+            HTEYE = pd["HeightOfEye"]
+            TZ = pd["TimeZone"]
+
+class MainWindow(tk.Tk):
+    def __init__(self):
+        tk.Tk.__init__(self)
+
+        frm = tk.Frame(self)
+        frm.grid()
+
+        self.title("SextantBuddy")
+
+        menubar = Menu(self)
+        self.file = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu = self.file)
+        self.file.add_command(label="Properties",command=properties_window)
+        self.file.add_separator()
+        self.file.add_command(label="Exit", command=self.destroy)
+
+        self.config(menu=menubar)
+
+        Celestial = [
+            'Sun',
+            'Moon',
+            'Planet',
+            'Star'
+        ]
+        Stars = [
+            'Polaris',
+            'Vega',
+            'Arcturus',
+            'Zuben\'elegenubi'
+        ]
+        Planets = [
+            'Venus',
+            'Mars',
+            'Jupiter',
+            'Saturn'
+        ]
+
+        self.starVar = tk.StringVar()
+        self.planVar = tk.StringVar()
+        self.celBody = tk.StringVar()
+
+        tk.Frame(self, width=80).grid(column=0)
+        tk.Frame(self, width=100).grid(column=10)
+
+        tk.Label(self, text='Sextant Degrees').grid(column=1, row=0)
+        tk.Label(self, text='Sextant Minutes').grid(column=1, row=1)
+        tk.Label(self, text='Celestial Body').grid(column=1, row=2)
+        tk.Label(self, text='Atm. Pressure').grid(column=4, row=0)
+        tk.Label(self, text='Ambient Temp').grid(column=4, row=1)
+        tk.Label(self, text='Date').grid(column=4, row=2)
+        tk.Label(self, text='Assumed Longitude').grid(column=6, row=0)
+        tk.Label(self, text='Assumed Latitude').grid(column=6, row=1)
+
+        self.degree = ttk.Entry(self, foreground="gray")
+        self.degree.grid(column=2,row=0)
+        self.degree.insert(END,"Whole Degrees")
+        self.degree.bind('<FocusIn>', textbox_focus)
+        self.degree.bind('<FocusOut>', lambda event, obj=self.degree : focus_out(event, obj))
+
+        self.minute = ttk.Entry(self, foreground="gray")
+        self.minute.grid(column=2,row=1)
+        self.minute.insert(END,"Decimal Minutes")
+        self.minute.bind('<FocusIn>', textbox_focus)
+        self.minute.bind('<FocusOut>', lambda event, obj=self.minute : focus_out(event, obj))
+
+        self.cb = ttk.Combobox(self, textvariable=self.celBody, values=Celestial)
+        self.cb.grid(column=2, row=2)
+        self.celBody.trace("w", dropdown_change)
+
+        self.pressure = ttk.Entry(self, foreground="gray")
+        self.pressure.grid(column=5,row=0)
+        self.pressure.insert(END,"Millibar")
+        self.pressure.bind('<FocusIn>', textbox_focus)
+        self.pressure.bind('<FocusOut>', 
+                    lambda event, obj=self.pressure : focus_out(event, obj))
+
+        self.temp = ttk.Entry(self, foreground="gray")
+        self.temp.grid(column=5,row=1)
+        self.temp.insert(END,"Decimal Degrees F")
+        self.temp.bind('<FocusIn>', textbox_focus)
+        self.temp.bind('<FocusOut>', lambda event, obj=self.temp : focus_out(event, obj))
+
+        self.latitude = ttk.Entry(self, foreground="gray")
+        self.latitude.grid(column=7, row=0)
+        self.latitude.insert(END,"Whole Degrees")
+        self.latitude.bind('<FocusIn>', textbox_focus)
+        self.latitude.bind('<FocusOut>', lambda event, obj=self.latitude : focus_out(event, obj))
+
+        self.longitude = ttk.Entry(self, foreground="gray")
+        self.longitude.grid(column=7, row=1)
+        self.longitude.insert(END,"Whole Degrees")
+        self.longitude.bind('<FocusIn>', textbox_focus)
+        self.longitude.bind('<FocusOut>', lambda event, obj=self.longitude : focus_out(event, obj))
+
+        #time things
+        self.date = ttk.Button(self, text="Calendar", command=dateCal)
+        self.date.grid(column=5,row=2)
+
+        self.time = time_widget(self, label='Time')
+
+        #buttons
+        self.enter = ttk.Button(self, text='Enter', command=enter_keypress)
+        self.enter.grid(column=2, row=4)
+        self.quitter = ttk.Button(self, text='Quit', command=self.destroy)
+        self.quitter.grid(column=2, row=5)
 
 def properties_window():
 
     def save():
+        global tzone
+        global pd
         IErr = indexError.get()
         HTEYE = HTE.get()
+        TZ = tzn.get()
+        tzone = ZONES[TZ]
         propDict["IndexError"] = IErr
         propDict["HeightOfEye"] = HTEYE
+        propDict["TimeZone"] = TZ
+        pd = propDict
         output = open('properties.pkl','wb')
         pickle.dump(propDict,output)
         props.destroy()
     
+    global TZ
+    global IErr
+    global HTEYE
+    global pd
+
     props = tk.Toplevel()
     props.title("Properties")
+
+    ZONES = {
+            "UTC 14" : 14,
+            "UTC 13" : 13,
+            "UTC 12:45" : 12.75,
+            "UTC 12" : 12,
+            "UTC 11" : 11,
+            "UTC 10:30" : 10.5,
+            "UTC 10" : 10,
+            "UTC 9:30" : 9.5,
+            "UTC 9" : 9,
+            "UTC 8:45" : 8.75,
+            "UTC 8" : 8,
+            "UTC 7" : 7,
+            "UTC 6:30" : 6.5,
+            "UTC 6" : 6,
+            "UTC 5:45" : 5.75,
+            "UTC 5:30" : 5.5,
+            "UTC 5" : 5,
+            "UTC 4:30" : 4.5,
+            "UTC 4" : 4,
+            "UTC 3:30" : 3.5,
+            "UTC 3" : 3,
+            "UTC 2" : 2,
+            "UTC 1" : 1,
+            "UTC 0" : 0,
+            "UTC -1" : -1,
+            "UTC -2" : -2,
+            "UTC -2:30" : -2.5,
+            "UTC -3" : -3,
+            "UTC -4" : -4,
+            "UTC -5" : -5,
+            "UTC -6" : -6,
+            "UTC -7" : -7,
+            "UTC -8" : -8,
+            "UTC -9" : -9,
+            "UTC -9:30" : -9.5,
+            "UTC -10" : -10,
+            "UTC -11" : -11,
+            "UTC -12" : -12,
+        }
+    zoneKey = tk.StringVar()
+    zoneKey = pd["TimeZone"]
 
     pfrm = tk.Frame(props)
     pfrm.grid()
 
     IELabel = tk.Label(pfrm, text="Index Error").grid(column=0,row=0)
     indexError = ttk.Entry(pfrm)
-    if not pd == None:
-        indexError.insert(END, str(pd["IndexError"]))
+    indexError.insert(END, str(pd["IndexError"]))
     indexError.grid(column=1,row=0)
 
     ht_eye = tk.Label(pfrm, text="Height of Eye").grid(column=0,row=1)
     HTE = ttk.Entry(pfrm)
-    if not pd == None:
-        HTE.insert(END, str(pd["HeightOfEye"]))
+    HTE.insert(END, str(pd["HeightOfEye"]))
     HTE.grid(column=1,row=1)
+
+    zone = tk.Label(pfrm, text="Time Zone").grid(column=0,row=2)
+    tzn = ttk.Combobox(pfrm, textvariable=zoneKey, values=list(ZONES.keys()))
+    tzn.delete(0,END)
+    tzn.insert(END, pd["TimeZone"])
+    tzn.grid(column=1,row=2)
     
-    saveButton = ttk.Button(pfrm, text="Save", command=save).grid(column=0,row=2)
-    cancelButton = ttk.Button(pfrm, text="Cancel", command=props.destroy).grid(column=1,row=2)
-
-file = Menu(menubar, tearoff=0)
-menubar.add_cascade(label="File", menu = file)
-file.add_command(label="Properties",command=properties_window)
-file.add_separator()
-file.add_command(label="Exit", command=root.destroy)
-
-root.config(menu=menubar)
-
-frm = tk.Frame(root)
-frm.grid()
+    saveButton = ttk.Button(pfrm, text="Save", 
+                            command=save).grid(column=0,row=3)
+    cancelButton = ttk.Button(pfrm, text="Cancel", 
+                              command=props.destroy).grid(column=1,row=3)
 
 def dateCal():
         global dateTime
@@ -110,14 +269,16 @@ def enter_keypress():
     global t_h
     global t_m
     global t_s
+    global Long
     sext_deg = degree.get()
     sext_min = minute.get()
     tempF = temp.get()
     tempC = (float(tempF) - 32) * (5/9)
     pres = pressure.get()
-    t_h = hour.get()
-    t_m = tmin.get()
-    t_s = tsec.get()
+   # t_h = hour.get()
+   # t_m = tmin.get()
+   # t_s = tsec.get()
+  #  Long = longitude.get()
     print(sext_deg + "\'", sext_min + "\"")
     sight_reduction()
 
@@ -137,7 +298,7 @@ def focus_out(event, obj):
     if not check:
         caller.configure(foreground="gray")
 
-        if obj == degree:
+        if obj == degree or obj == latitude or obj == longitude:
             caller.insert(END,"Whole Degrees")
         elif obj == minute:
             caller.insert(END,"Decimal Minutes")
@@ -160,13 +321,7 @@ def dropdown_change(*args):
     else:
         return
 
-def sight_reduction():
-    Hs = (float(sext_deg) + (float(sext_min) / 60))
-    dip = (0.97 * math.sqrt(float(HTEYE)))*-1
-    refr = (1 / math.tan(Hs + (7.31/(Hs + 4.4)))) * ((float(pres) / 1010)*(283 / tempC))
-
-    Hc = Hs + (float(IErr) + dip + refr)/60
-
+def julian_time():
     if dateTime.month < 3:
         JD_Year = int(dateTime.year) - 1
         JD_Month = int(dateTime.month) + 12
@@ -174,270 +329,107 @@ def sight_reduction():
         JD_Year = int(dateTime.year)
         JD_Month = int(dateTime.month)
     
-    JD_Day = int(dateTime.day) + ((int(t_h) + (int(t_m) + int(t_s)/60) / 60) / 24)
+    JD_Day = int(dateTime.day) + \
+        (((int(t_h) + (int(t_m) + int(t_s)/60) / 60) / 24) + tzone)
 
-    JD_A1 = math.modf(JD_Year / 100)
-    JD_A = JD_A1[1]
-    JD_A_DIV = math.modf(JD_A / 4)
+    global JulianDay
+    global JulianDate
+    JulianDay = math.modf(365.25 * (JD_Year + 4716))[1] + \
+        math.modf(30.6 * (JD_Month + 1))[1] + JD_Day + \
+            (2 - math.modf(JD_Year / 100)[1] + \
+             math.modf(math.modf(JD_Year / 100)[1] / 4)[1]) - 1524.5
+    JulianDate = math.modf(365.25 * (JD_Year + 4716))[1] + \
+        math.modf(30.6 * (JD_Month + 1))[1] + dateTime.day + \
+            (2 - math.modf(JD_Year / 100)[1] + \
+             math.modf(math.modf(JD_Year / 100)[1] / 4)[1]) - 1524.5
+    JulianDayYear = math.modf(365.25 * (JD_Year + 4716))[1] + 30 + \
+        (2 - math.modf(JD_Year / 100)[1] + \
+         math.modf(math.modf(JD_Year / 100)[1] / 4)[1]) - 1524.5 - 0.5
 
-    JD_B = 2 - JD_A + JD_A_DIV[1]
+    #check if leap
+    if JulianDayYear % 4 == 0:
+        bigK = 1
+    else:
+        bigK = 2
 
-    JD_Part1 = math.modf(365.25 * (JD_Year + 4716))
-    JD_Part2 = math.modf(30.6 * (JD_Month + 1))
-    JD = JD_Part1[1] + JD_Part2[1] + JD_Day + JD_B - 1524.5
+    bigN = math.modf((275 * dateTime.month)/9)[1] - \
+        bigK * math.modf((dateTime.month + 9)/12)[1] + JD_Day - 30
+
+    JD0 = math.modf(365.25*(dateTime.year-1))[1] - \
+        math.modf(dateTime.year/100)[1] + \
+            math.modf(math.modf(dateTime.year/100)[1]/4)[1] + 1721424.5
+
+def sidereal_time():
+    global sidTimeGM
+    global sidTimeLoc
+
+    bigTDate = ((JulianDate - 2451545) / 36525)
+    bigTDay = ((JulianDay - 2451545) / 36525)
+    sidTimeGM = (100.46061837 + (36000.770053608 * bigTDate) \
+        + (0.000387933 * (bigTDate**2)) - ((bigTDate**3) / 38710000)) % 360
+    sidTimeLoc = (280.46061837 + (360.98564736629*(JulianDay-2451545)) \
+        + (0.000387933 * (bigTDay**2)) - ((bigTDay**3) / 38710000)) % 360
+    
+def hour_angle():
+    global H
+
+    H = sidTimeLoc - Long - RA
+
+def sight_reduction():
+    Hs = (float(sext_deg) + (float(sext_min) / 60))
+    dip = (0.97 * math.sqrt(float(HTEYE)))*-1
+    refr = (1 / math.tan(Hs + (7.31/(Hs + 4.4)))) * \
+        ((float(pres) / 1010)*(283 / tempC))
+
+    Hc = Hs + (float(IErr) + dip + refr)/60
+
+    julian_time()
+    sidereal_time()
+    #decl_Sun = math.degrees(math.asin(math.sin(math.radians(-23.44)) * \
+    # math.cos(math.radians((360/365.24)*(bigN + 10) + \
+    # (360/math.pi)*0.0167*math.sin(math.radians((360/365.24)*(bigN - 2)))))))
 
     print(str(Hs) + "\'")
     print("dip:", dip)
     print("refr:", refr)
     print("ALT:", Hc)
-    print(JD_Day,JD)
+    print(JulianDay)
 
+class time_widget(tk.Frame):
+    def __init__(self, parent, label, default='00'):
+        tk.Frame.__init__(self, parent)
+        
+        hourVar = StringVar()
+        tminVar = StringVar()
+        tsecVar = StringVar()
 
-    
-Celestial = [
-    'Sun',
-    'Moon',
-    'Planet',
-    'Star'
-]
+        self.label = tk.Label(parent, text=label)
+        self.label.grid(column=5,row=3)
 
-Stars = [
-    'Polaris',
-    'Vega',
-    'Arcturus',
-    'Zuben\'elegenubi'
-]
+        self.hour = ttk.Spinbox(parent, from_=0, to=23, textvariable=hourVar)
+        self.hour.insert(END,default)
+        self.hour.grid(column=6,row=3)
+        self.tmin = ttk.Spinbox(parent, from_=0, to=59, textvariable=tminVar)
+        self.tmin.insert(END,default)
+        self.tmin.grid(column=7,row=3)
+        self.tsec = ttk.Spinbox(parent, from_=0, to=59, textvariable=tsecVar)
+        self.tsec.insert(END,default)
+        self.tsec.grid(column=8,row=3)
 
-Planets = [
-    'Venus',
-    'Mars',
-    'Jupiter',
-    'Saturn'
-]
+    #hour.grid(column=5, row=3)
 
-starVar = tk.StringVar()
-planVar = tk.StringVar()
-celBody = tk.StringVar()
+    #HMcolon = tk.Label(frm, text=":").grid(column=6,row=3)
 
-tk.Frame(frm, width=80).grid(column=0)
-tk.Frame(frm, width=100).grid(column=10)
+    #tmin = ttk.Combobox(frm, textvariable=tminVar, values=TMIN)
+    #tmin.grid(column=7, row=3)
+    #tmin.insert(END, "00")
 
-tk.Label(frm, text='Alt. Degrees').grid(column=1, row=0)
-tk.Label(frm, text='Alt. Minutes').grid(column=1, row=1)
-tk.Label(frm, text='Celestial Body').grid(column=1, row=2)
-tk.Label(frm, text='Atm. Pressure').grid(column=4, row=0)
-tk.Label(frm, text='Ambient Temp').grid(column=4, row=1)
-tk.Label(frm, text='Date').grid(column=4, row=2)
-tk.Label(frm, text='Time').grid(column=4, row=3)
+    #MScolon = tk.Label(frm, text=":").grid(column=8,row=3)
 
-degree = ttk.Entry(frm, foreground="gray")
-degree.grid(column=2,row=0)
-degree.insert(END,"Whole Degrees")
-degree.bind('<FocusIn>', textbox_focus)
-degree.bind('<FocusOut>', lambda event, obj=degree : focus_out(event, obj))
+    #tsec = ttk.Combobox(frm, textvariable=tsecVar, values=TSEC)
+    #tsec.grid(column=9, row=3)
+    #tsec.insert(END, "00")
 
-minute = ttk.Entry(frm, foreground="gray")
-minute.grid(column=2,row=1)
-minute.insert(END,"Decimal Minutes")
-minute.bind('<FocusIn>', textbox_focus)
-minute.bind('<FocusOut>', lambda event, obj=minute : focus_out(event, obj))
-
-cb = ttk.Combobox(frm, textvariable=celBody, values=Celestial)
-cb.grid(column=2, row=2)
-celBody.trace("w", dropdown_change)
-
-pressure = ttk.Entry(frm, foreground="gray")
-pressure.grid(column=5,row=0)
-pressure.insert(END,"Millibar")
-pressure.bind('<FocusIn>', textbox_focus)
-pressure.bind('<FocusOut>', lambda event, obj=pressure : focus_out(event, obj))
-
-temp = ttk.Entry(frm, foreground="gray")
-temp.grid(column=5,row=1)
-temp.insert(END,"Decimal Degrees F")
-temp.bind('<FocusIn>', textbox_focus)
-temp.bind('<FocusOut>', lambda event, obj=temp : focus_out(event, obj))
-
-#time things
-
-date = ttk.Button(frm, text="Calendar", command=dateCal)
-date.grid(column=5,row=2)
-
-HOUR = [
-    "00",
-    "01",
-    "02",
-    "03",
-    "04",
-    "05",
-    "06",
-    "07",
-    "08",
-    "09",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "20",
-    "21",
-    "22",
-    "23"
-]
-
-TMIN = [
-    "00",
-    "01",
-    "02",
-    "03",
-    "04",
-    "05",
-    "06",
-    "07",
-    "08",
-    "09",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "20",
-    "21",
-    "22",
-    "23",
-    "24",
-    "25",
-    "26",
-    "27",
-    "28",
-    "29",
-    "30",
-    "31",
-    "32",
-    "33",
-    "34",
-    "35",
-    "36",
-    "37",
-    "38",
-    "39",
-    "40",
-    "41",
-    "42",
-    "43",
-    "44",
-    "45",
-    "46",
-    "47",
-    "48",
-    "49",
-    "50",
-    "51",
-    "52",
-    "53",
-    "54",
-    "55",
-    "56",
-    "57",
-    "58",
-    "59"
-]
-
-TSEC = [
-    "00",
-    "01",
-    "02",
-    "03",
-    "04",
-    "05",
-    "06",
-    "07",
-    "08",
-    "09",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "20",
-    "21",
-    "22",
-    "23",
-    "24",
-    "25",
-    "26",
-    "27",
-    "28",
-    "29",
-    "30",
-    "31",
-    "32",
-    "33",
-    "34",
-    "35",
-    "36",
-    "37",
-    "38",
-    "39",
-    "40",
-    "41",
-    "42",
-    "43",
-    "44",
-    "45",
-    "46",
-    "47",
-    "48",
-    "49",
-    "50",
-    "51",
-    "52",
-    "53",
-    "54",
-    "55",
-    "56",
-    "57",
-    "58",
-    "59"
-]
-
-hourVar = StringVar()
-tminVar = StringVar()
-tsecVar = StringVar()
-
-hour = ttk.Combobox(frm, textvariable=hourVar, values=HOUR)
-hour.grid(column=5, row=3)
-
-HMcolon = tk.Label(frm, text=":").grid(column=6,row=3)
-
-tmin = ttk.Combobox(frm, textvariable=tminVar, values=TMIN)
-tmin.grid(column=7, row=3)
-
-MScolon = tk.Label(frm, text=":").grid(column=8,row=3)
-
-tsec = ttk.Combobox(frm, textvariable=tsecVar, values=TSEC)
-tsec.grid(column=9, row=3)
-
-enter = ttk.Button(frm, text='Enter', command=enter_keypress)
-enter.grid(column=2, row=4)
-quitter = ttk.Button(frm, text='Quit', command=root.destroy)
-quitter.grid(column=2, row=5)
-
-
-
-root.mainloop()
+if __name__ == "__main__":
+    root = MainWindow()
+    root.mainloop()
