@@ -68,6 +68,7 @@ class MainWindow(tk.Tk):
             global t_m
             global t_s
             global Long
+            global Lat
             global times
             times = self.time.get()
             sext_deg = self.degree.get()
@@ -75,7 +76,8 @@ class MainWindow(tk.Tk):
             tempF = self.temp.get()
             tempC = (float(tempF) - 32) * (5/9)
             pres = self.pressure.get()
-            #Long = self.lon.get()
+            Long = self.lon.get()
+            Lat = self.lat.get()
             print(sext_deg + "\'", sext_min + "\"")
             sight_reduction()
 
@@ -369,6 +371,8 @@ def julian_time():
 def sidereal_time():
     global sidTimeGM
     global sidTimeLoc
+    global bigTDate
+    global bigTDay
 
     bigTDate = ((JulianDate - 2451545) / 36525)
     bigTDay = ((JulianDay - 2451545) / 36525)
@@ -376,9 +380,484 @@ def sidereal_time():
         + (0.000387933 * (bigTDate**2)) - ((bigTDate**3) / 38710000)) % 360
     sidTimeLoc = (280.46061837 + (360.98564736629*(JulianDay-2451545)) \
         + (0.000387933 * (bigTDay**2)) - ((bigTDay**3) / 38710000)) % 360
+
+def nutation_obliquity():
+    global trueObliq
+    global bigD
+    global bigM
+    global Mprime
+    global bigF
+    global Omega
+
+    bigD = (297.85036 + (445267.111480*bigTDate) - \
+        (0.0019142*(bigTDate**2)) + ((bigTDate**3)/189474)) % 360
+    bigM = (357.52772 + (35999.050340*bigTDate) - \
+        (0.0001603*(bigTDate**2)) - ((bigTDate**3)/300000)) % 360
+    Mprime = (134.96298 + (477198.867398*bigTDate) + \
+        (0.00866972*(bigTDate**2)) + ((bigTDate**3)/56250)) % 360
+    bigF = (93.27191 + (483202.017538*bigTDate) - \
+        (0.0036825*(bigTDate**2)) + ((bigTDate**3)/327270)) % 360
+    Omega = (125.04452 - (1934.136261*bigTDate) + \
+        (0.0020708*(bigTDate**2)) + ((bigTDate**3)/450000)) % 360
+
+    bigU = bigTDate/100
+
+    global meanObliq
+    meanObliq = 23.439291111111111 - ((4680.93*(bigU) \
+                                - 1.55*(bigU**2) \
+                                + 1999.25*(bigU**3) \
+                                - 51.38*(bigU**4) \
+                                - 249.67*(bigU**5) \
+                                - 39.05*(bigU**6) \
+                                + 7.12*(bigU**7) \
+                                + 27.87*(bigU**8) \
+                                + 5.79*(bigU**9) \
+                                + 2.45*(bigU**10))/3600)
+
+def delta_obliq():
+    argument = [[0,0,0,0,1],
+                [-2,0,0,2,2],
+                [0,0,0,2,2],
+                [0,0,0,0,2],
+                [0,1,0,0,0],
+                [0,0,1,0,0],
+                [-2,1,0,2,2],
+                [0,0,0,2,1],
+                [0,0,1,2,2],
+                [-2,-1,0,2,2],
+                [-2,0,1,0,0],
+                [-2,0,0,2,1],
+                [0,0,-1,2,2],
+                [2,0,0,0,0],
+                [0,0,1,0,1],
+                [2,0,-1,2,2],
+                [0,0,-1,0,1],
+                [0,0,1,2,1],
+                [-2,0,2,0,0],
+                [0,0,-2,2,1],
+                [2,0,0,2,2],
+                [0,0,2,2,2],
+                [0,0,2,0,0],
+                [-2,0,1,2,2],
+                [0,0,0,2,0],
+                [-2,0,0,2,0],
+                [0,0,-1,2,1],
+                [0,2,0,0,0],
+                [2,0,-1,0,1],
+                [-2,2,0,2,2],
+                [0,1,0,0,1],
+                [-2,0,1,0,1],
+                [0,-1,0,0,1],
+                [0,0,2,-2,0],
+                [2,0,-1,2,1],
+                [2,0,1,2,2],
+                [0,1,0,2,2],
+                [-2,1,1,0,0],
+                [0,-1,0,2,2],
+                [2,0,0,2,1],
+                [2,0,1,0,0],
+                [-2,0,2,2,2],
+                [-2,0,1,2,1],
+                [2,0,-2,0,1],
+                [2,0,0,0,1],
+                [0,-1,1,0,0],
+                [-2,-1,0,2,1],
+                [-2,0,0,0,1],
+                [0,0,2,2,1],
+                [-2,0,2,0,1],
+                [-2,1,0,2,1],
+                [0,0,1,-2,0],
+                [-1,0,1,0,0],
+                [-2,1,0,0,0],
+                [1,0,0,0,0],
+                [0,0,1,2,0],
+                [0,0,-2,2,2],
+                [-1,-1,1,0,0],
+                [0,1,1,0,0],
+                [0,-1,1,2,2],
+                [2,-1,-1,2,2],
+                [0,0,3,2,2],
+                [2,-1,0,2,2]]
+    coefficientPhi = [[-171996-(174.2*bigTDate)],
+                   [-13187-(1.6*bigTDate)],
+                   [-2274-(0.2*bigTDate)],
+                   [2062+(0.2*bigTDate)],
+                   [1426-(3.4*bigTDate)],
+                   [712+(0.1*bigTDate)],
+                   [-517+(1.2*bigTDate)],
+                   [-386-(0.4*bigTDate)],
+                   [-301],
+                   [217-(0.5*bigTDate)],
+                   [-158],
+                   [129+(0.1*bigTDate)],
+                   [123],
+                   [63],
+                   [63+(0.1*bigTDate)],
+                   [-59],
+                   [-58-(0.1*bigTDate)],
+                   [-51],
+                   [48],
+                   [46],
+                   [-38],
+                   [-31],
+                   [29],
+                   [29],
+                   [26],
+                   [-22],
+                   [21],
+                   [17-(0.1*bigTDate)],
+                   [16],
+                   [-16+(0.1*bigTDate)],
+                   [-15],
+                   [-13],
+                   [-12],
+                   [11],
+                   [-10],
+                   [-8],
+                   [7],
+                   [-7],
+                   [-7],
+                   [-7],
+                   [6],
+                   [6],
+                   [6],
+                   [-6],
+                   [-6],
+                   [5],
+                   [-5],
+                   [-5],
+                   [-5],
+                   [4],
+                   [4],
+                   [4],
+                   [-4],
+                   [-4],
+                   [-4],
+                   [3],
+                   [-3],
+                   [-3],
+                   [-3],
+                   [-3],
+                   [-3],
+                   [-3],
+                   [-3]]
+    coefficientEpsilon = [[92025+(8.9*bigTDate)],
+                          [5736-(3.1*bigTDate)],
+                          [977-(0.5*bigTDate)],
+                          [-895+(0.5*bigTDate)],
+                          [54-(0.1*bigTDate)],
+                          [-7],
+                          [224-(0.6*bigTDate)],
+                          [200],
+                          [129-(0.1*bigTDate)],
+                          [-95+(0.3*bigTDate)],
+                          [0],
+                          [-70],
+                          [-53],
+                          [0],
+                          [-33],
+                          [26],
+                          [32],
+                          [27],
+                          [0],
+                          [-24],
+                          [16],
+                          [13],
+                          [0],
+                          [-12],
+                          [0],
+                          [0],
+                          [-10],
+                          [0],
+                          [-8],
+                          [7],
+                          [9],
+                          [7],
+                          [6],
+                          [0],
+                          [5],
+                          [3],
+                          [-3],
+                          [0],
+                          [3],
+                          [3],
+                          [0],
+                          [-3],
+                          [-3],
+                          [3],
+                          [3],
+                          [0],
+                          [3],
+                          [3],
+                          [3],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0],
+                          [0]]
+    DMMFO = [[bigD,bigM,Mprime,bigF,Omega]]
+
+    result = [[0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0],
+              [0,0,0,0,0]]
+    sumsEpsilon = [[0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0]]
+    sumsPhi = [[0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0]]
+
+    deltaObliq = 0
+    deltaPhi = 0
+
+    for i in range(len(argument)):
+        for j in range(len(DMMFO[0])):
+            result[i][j] += (argument[i][j] * DMMFO[0][j])
+        sumsEpsilon[i][0] += \
+            (coefficientEpsilon[i][0])*math.cos(math.radians(sum(result[i])))
+        sumsPhi[i][0] += \
+           (coefficientPhi[i][0])*math.sin(math.radians(sum(result[i])))
+
+    for i in range(len(sumsEpsilon)):
+        deltaObliq += sum(sumsEpsilon[i])
+    for i in range(len(sumsPhi)):
+        deltaPhi += sum(sumsPhi[i])
     
-    print(sidTimeLoc)
+    deltaObliq /= 10000
+    deltaPhi /= 10000
+
+    global trueObliq
+    trueObliq = meanObliq + (deltaObliq/3600)
+
+def planet_position():
+
+    global L0, M0, smallE, sunC, sunLon, smallV, sunOmega, sunLambda, sunRadV
+    L0 = (280.46646 + (36000.76983*bigTDate) + (0.0003032*(bigTDate**2))) % 360
+    M0 = (357.52911 + (35999.05029*bigTDate) - (0.0001537*(bigTDate**2))) % 360
+    smallE = 0.016708634 - (0.000042037*bigTDate) - \
+        (0.0000001267*(bigTDate**2))
     
+    delta_obliq()
+
+    sunC =  (1.914602 - (0.004817*bigTDate) - (0.000014*(bigTDate**2))) \
+                * math.sin(math.radians(M0)) \
+                + (0.019993 - (0.000101*bigTDate)) \
+                    * math.sin(math.radians(2*M0)) \
+                    + 0.000289*math.sin(math.radians(3*M0))
+    
+    sunLon = (L0 + sunC) % 360
+    smallV = (M0 + sunC) % 360
+
+    sunRadV = ((1.000001018*(1-(smallE**2))) / \
+               (1 + (smallE*math.cos(math.radians(smallV)))))
+    
+    sunOmega = 125.04 - (1934.136*bigTDate)
+    sunLambda = sunLon - 0.00569 - (0.00478*math.sin(math.radians(sunOmega)))
+
+def right_ascension():
+    CosObliq = math.cos(math.radians(trueObliq+(0.00256*math.cos(math.radians(sunOmega)))))
+    SinSunLon = math.sin(math.radians(sunLambda))
+    CosSunLon = math.cos(math.radians(sunLambda))
+    TanSunRA = (CosObliq*SinSunLon)/CosSunLon
+    SunRA = math.degrees(math.atan(TanSunRA))
+
+    SinObliq = math.sin(math.radians(trueObliq+0.00256*math.cos(math.radians(sunOmega))))
+    SinSunDec = SinObliq*SinSunLon
+    SunDec = math.degrees(math.asin(SinSunDec))
+    
+    print(bigTDate,L0,M0,smallE,sunC,sunLon,sunRadV,sunOmega,sunLambda,meanObliq,trueObliq,SunRA,SunDec)
+
 def hour_angle():
     global H
 
@@ -394,6 +873,9 @@ def sight_reduction():
 
     julian_time()
     sidereal_time()
+    nutation_obliquity()
+    planet_position()
+    right_ascension()    
     
 
 
